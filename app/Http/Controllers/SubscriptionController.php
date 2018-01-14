@@ -16,9 +16,11 @@ class SubscriptionController extends Controller
      */
     public function index()
     {
-        $user = User::find(1);
+        $user = User::find(Auth::id());
+        $plan=$user->subscription('main');
+        //$user->subscription('main')->updateQuantity(10);
 
-        return view('subscription.index',compact('user'));
+        return view('subscription.index', compact('user','plan'));
     }
 
     /**
@@ -28,41 +30,56 @@ class SubscriptionController extends Controller
      */
     public function create()
     {
-        $user = User::find(1);
-        return view('subscription.form',compact('user'));
+        $user = User::find(Auth::id());
+        return view('subscription.form', compact('user'));
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
     {
-        $user = User::find(1);
+        $user = User::find(Auth::id());
+        $stripe_plan = $request['stripe_plan'];
 
-        if(!$user->subscription('main')){
-            $creditCardToken = $request->stripeToken;
-            $res = $user->newSubscription('main', 'small')
-                ->trialDays(30)
-                ->create($creditCardToken, [
-                    'plan' => 'small',
-                    'email' => $user->email,
+        $creditCardToken = $request->stripeToken;
+        if (!$user->subscription('main')) {
+            if (!empty($stripe_plan)) {
+                $res = $user->newSubscription('main', $stripe_plan)
+                    ->trialDays(30)
+                    ->create($creditCardToken, [
+                        'plan' => $stripe_plan,
+                        'email' => $user->email,
 
-                ]);
-            return $res;
-        }else{
-$info="You have already subscribed";
-            return view('subscription.index',compact('user','info'));
+                    ]);
+
+                return view('subscription.index', compact('user'));
+            }
+        } else {
+            return view('subscription.index', compact('user'));
         }
+//        if (!$user->subscription('main')) {
+//
+//                return view('subscription.index', compact('user'));
+//            }else{
+//                $info = "Please select any plan for subscription!";
+//                return view('subscription.form', compact('user', 'info'));
+//            }
+//
+//        } else {
+//            $info = "You have already subscribed";
+//            return view('subscription.index', compact('user', 'info'));
+//        }
 
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  int $id
      * @return \Illuminate\Http\Response
      */
     public function show($id)
@@ -73,7 +90,7 @@ $info="You have already subscribed";
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  int  $id
+     * @param  int $id
      * @return \Illuminate\Http\Response
      */
     public function edit($id)
@@ -84,8 +101,8 @@ $info="You have already subscribed";
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param  \Illuminate\Http\Request $request
+     * @param  int $id
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
@@ -96,7 +113,7 @@ $info="You have already subscribed";
     /**
      * Remove the specified resource from storage.
      *
-     * @param  int  $id
+     * @param  int $id
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
@@ -107,7 +124,7 @@ $info="You have already subscribed";
 
     public function cancel()
     {
-        $user = User::find(1);
+        $user = User::find(Auth::id());
         //-- If i want immediately stop subscription without ability to resume it again
 //        $user->subscription('main')->cancelNow();
         $user->subscription('main')->cancel();
@@ -117,9 +134,25 @@ $info="You have already subscribed";
 
     public function resume()
     {
-        $user = User::find(1);
+        $user = User::find(Auth::id());
         $user->subscription('main')->resume();
 
         return redirect('/subscription');
     }
+
+    public function change()
+    {
+        $user = User::find(Auth::id());
+
+        $plan=$user->subscription('main');
+        if($plan->stripe_plan=='small'){
+            $plan="large";
+        }else{
+            $plan="small";
+        }
+        $user->subscription('main')->swap($plan);
+
+        return redirect('/subscription');
+    }
+
 }

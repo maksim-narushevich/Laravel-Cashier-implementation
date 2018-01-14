@@ -27,6 +27,7 @@ Route::group(['prefix'=>'subscription','middleware'=>'auth'], function (){
     Route::get('/new','SubscriptionController@create');
     Route::get('/cancel','SubscriptionController@cancel');
     Route::get('/resume','SubscriptionController@resume');
+    Route::get('/change','SubscriptionController@change');
     Route::post('/register','SubscriptionController@store');
     Route::post(
         'stripe/webhook',
